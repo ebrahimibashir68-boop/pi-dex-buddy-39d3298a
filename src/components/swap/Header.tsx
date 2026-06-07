@@ -1,10 +1,15 @@
-import { Wallet } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Wallet, Loader2 } from "lucide-react";
+import { usePiAuth } from "@/hooks/use-pi-auth";
 
 export function Header() {
-  const [connected, setConnected] = useState(false);
-  const addr = "Gπ7x...4kQa";
+  const { session, status, signIn } = usePiAuth(true);
+  const loading = status === "loading";
+  const label = session
+    ? `@${session.username}`
+    : loading
+      ? "Connecting…"
+      : "Sign in with Pi";
+
   return (
     <header className="w-full px-4 sm:px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
       <div className="flex items-center gap-2.5">
@@ -35,13 +40,13 @@ export function Header() {
 
       <button
         onClick={() => {
-          setConnected(true);
-          toast.success("Connected to Pi Wallet", { description: addr });
+          if (!session && !loading) void signIn();
         }}
-        className="btn-pi rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:btn-pi-hover"
+        disabled={loading}
+        className="btn-pi rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:btn-pi-hover disabled:opacity-70"
       >
-        <Wallet className="size-4" />
-        {connected ? addr : "Connect"}
+        {loading ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+        {label}
       </button>
     </header>
   );
