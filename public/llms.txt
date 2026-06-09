@@ -1,0 +1,9 @@
+# PiSwap
+
+> PiSwap is a decentralized exchange for the Pi Network ecosystem — swap tokens instantly with low fees and deep liquidity.
+
+PiSwap provides a mobile-first, Pi Browser–optimized interface for trading tokens in the Pi ecosystem, powered by Pioneer liquidity.
+
+## Pages
+
+- [Home](/): Token swap interface, market ticker, and ecosystem stats.

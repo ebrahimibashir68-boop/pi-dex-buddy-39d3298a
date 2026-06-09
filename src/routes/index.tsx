@@ -12,6 +12,10 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Swap tokens instantly on the Pi Network with low fees, deep liquidity, and a beautifully simple interface." },
       { property: "og:title", content: "PiSwap — The Pi Ecosystem DEX" },
       { property: "og:description", content: "Swap tokens instantly on the Pi Network with low fees, deep liquidity, and a beautifully simple interface." },
+      { property: "og:url", content: "https://pi-dex-buddy.lovable.app/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://pi-dex-buddy.lovable.app/" },
     ],
   }),
   component: Home,

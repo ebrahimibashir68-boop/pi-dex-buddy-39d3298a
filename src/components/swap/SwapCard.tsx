@@ -42,7 +42,10 @@ export function SwapCard() {
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className="size-9 grid place-items-center rounded-full bg-secondary/70 hover:bg-secondary border border-border transition-colors">
+            <button
+              aria-label="Swap settings"
+              className="size-9 grid place-items-center rounded-full bg-secondary/70 hover:bg-secondary border border-border transition-colors"
+            >
               <Settings2 className="size-4" />
             </button>
           </PopoverTrigger>
@@ -200,6 +203,7 @@ function TokenInput({
           onChange={(e) => onAmount(e.target.value.replace(/[^0-9.]/g, ""))}
           readOnly={!editable}
           placeholder="0.0"
+          aria-label={`${label} amount in ${token.symbol}`}
           className="flex-1 min-w-0 bg-transparent outline-none text-3xl font-display font-semibold placeholder:text-muted-foreground/40"
         />
         <TokenSelectDialog value={token} onChange={onToken} disabledSymbol={disabledSymbol} />
