@@ -42,7 +42,10 @@ export function SwapCard() {
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className="size-9 grid place-items-center rounded-full bg-secondary/70 hover:bg-secondary border border-border transition-colors">
+            <button
+              aria-label="Swap settings"
+              className="size-9 grid place-items-center rounded-full bg-secondary/70 hover:bg-secondary border border-border transition-colors"
+            >
               <Settings2 className="size-4" />
             </button>
           </PopoverTrigger>
