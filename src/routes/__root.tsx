@@ -87,6 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "PiSwap — The Pi Ecosystem DEX" },
       { name: "twitter:description", content: "PiSwap is a decentralized exchange for the Pi Network — swap tokens instantly with low fees and deep liquidity." },
+      { name: "google-site-verification", content: "XPIwI92E0qc6n1t0heXo1wFtDKitHDE6v0-SuUtmKNA" },
     ],
     scripts: [
       {
