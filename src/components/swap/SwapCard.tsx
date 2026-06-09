@@ -203,6 +203,7 @@ function TokenInput({
           onChange={(e) => onAmount(e.target.value.replace(/[^0-9.]/g, ""))}
           readOnly={!editable}
           placeholder="0.0"
+          aria-label={`${label} amount in ${token.symbol}`}
           className="flex-1 min-w-0 bg-transparent outline-none text-3xl font-display font-semibold placeholder:text-muted-foreground/40"
         />
         <TokenSelectDialog value={token} onChange={onToken} disabledSymbol={disabledSymbol} />
