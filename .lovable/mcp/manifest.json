@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "piswap-mcp",
+      "version": "0.1.0",
+      "title": "PiSwap MCP"
+    },
+    "tools": [
+      {
+        "name": "list_tokens",
+        "title": "List tokens",
+        "description": "List all tokens available on PiSwap with their symbol, name, and current mock USD price.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_swap_quote",
+        "title": "Get swap quote",
+        "description": "Get a simulated PiSwap quote for swapping an input amount of one token into another. Returns output amount, rate, price impact, and fee.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from_symbol": {
+              "type": "string",
+              "description": "Source token symbol, e.g. PI"
+            },
+            "to_symbol": {
+              "type": "string",
+              "description": "Destination token symbol, e.g. USDP"
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Amount of the source token to swap"
+            },
+            "slippage_pct": {
+              "default": 0.5,
+              "description": "Max slippage percentage (default 0.5)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 50
+            }
+          },
+          "required": [
+            "from_symbol",
+            "to_symbol",
+            "amount"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
