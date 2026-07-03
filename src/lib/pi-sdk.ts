@@ -71,9 +71,11 @@ export async function initPi(): Promise<PiSDK> {
   return Pi;
 }
 
-export async function authenticatePi(): Promise<PiAuthResult> {
+export async function authenticatePi(
+  scopes: string[] = ["username", "payments", "wallet_address"],
+): Promise<PiAuthResult> {
   const Pi = await initPi();
-  return Pi.authenticate(["username"], (payment) => {
+  return Pi.authenticate(scopes, (payment) => {
     // Required callback for incomplete payments; surface for visibility.
     console.warn("[Pi] incomplete payment found", payment);
   });
