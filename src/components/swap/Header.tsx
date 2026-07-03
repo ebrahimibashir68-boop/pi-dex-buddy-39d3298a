@@ -3,13 +3,17 @@ import { usePiAuth } from "@/hooks/use-pi-auth";
 import { SettingsMenu } from "./SettingsMenu";
 
 export function Header() {
-  const { session, status, signIn } = usePiAuth(true);
+  const { session, status, signIn } = usePiAuth(false);
   const loading = status === "loading";
+  const shortWallet = session?.walletAddress
+    ? `${session.walletAddress.slice(0, 6)}…${session.walletAddress.slice(-4)}`
+    : null;
   const label = session
-    ? `@${session.username}`
+    ? shortWallet ?? `@${session.username}`
     : loading
       ? "Connecting…"
-      : "Sign in with Pi";
+      : "Connect Pi Wallet";
+
 
   return (
     <header className="w-full px-4 sm:px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
