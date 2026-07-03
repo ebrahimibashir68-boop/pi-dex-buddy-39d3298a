@@ -1,5 +1,6 @@
 import { Wallet, Loader2 } from "lucide-react";
 import { usePiAuth } from "@/hooks/use-pi-auth";
+import { SettingsMenu } from "./SettingsMenu";
 
 export function Header() {
   const { session, status, signIn } = usePiAuth(true);
@@ -38,16 +39,19 @@ export function Header() {
         ))}
       </nav>
 
-      <button
-        onClick={() => {
-          if (!session && !loading) void signIn();
-        }}
-        disabled={loading}
-        className="btn-pi rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:btn-pi-hover disabled:opacity-70"
-      >
-        {loading ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
-        {label}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            if (!session && !loading) void signIn();
+          }}
+          disabled={loading}
+          className="btn-pi rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:btn-pi-hover disabled:opacity-70"
+        >
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+          {label}
+        </button>
+        <SettingsMenu />
+      </div>
     </header>
   );
 }
