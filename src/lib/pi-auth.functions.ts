@@ -12,6 +12,15 @@ export const verifyPiToken = createServerFn({ method: "POST" })
     if (!res.ok) {
       throw new Error(`Pi token verification failed (${res.status})`);
     }
-    const me = (await res.json()) as { uid: string; username: string };
-    return { uid: me.uid, username: me.username, verifiedAt: Date.now() };
+    const me = (await res.json()) as {
+      uid: string;
+      username: string;
+      wallet_address?: string;
+    };
+    return {
+      uid: me.uid,
+      username: me.username,
+      walletAddress: me.wallet_address ?? null,
+      verifiedAt: Date.now(),
+    };
   });
