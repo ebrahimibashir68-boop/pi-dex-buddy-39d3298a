@@ -3,7 +3,7 @@
 
 type PiAuthResult = {
   accessToken: string;
-  user: { uid: string; username: string };
+  user: { uid: string; username: string; wallet_address?: string };
 };
 
 type PiSDK = {
