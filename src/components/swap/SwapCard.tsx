@@ -206,11 +206,19 @@ export function SwapCard() {
 
       <button
         onClick={handleSwap}
-        disabled={!inAmt || insufficient}
+        disabled={!inAmt || insufficient || paying}
         className="mt-5 w-full btn-pi rounded-2xl py-4 font-display font-semibold text-lg hover:[&:not(:disabled)]:btn-pi-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        <Zap className="size-5" />
-        {insufficient ? `Insufficient ${from.symbol}` : inAmt ? "Swap" : "Enter an amount"}
+        {paying ? <Loader2 className="size-5 animate-spin" /> : <Zap className="size-5" />}
+        {paying
+          ? "Confirm in Pi Wallet…"
+          : insufficient
+            ? `Insufficient ${from.symbol}`
+            : inAmt
+              ? from.symbol === "PI"
+                ? "Swap with Pi"
+                : "Swap"
+              : "Enter an amount"}
       </button>
 
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
