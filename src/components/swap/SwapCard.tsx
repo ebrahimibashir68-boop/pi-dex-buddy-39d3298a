@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, Settings2, Zap, Info } from "lucide-react";
+import { ArrowDown, Settings2, Zap, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { TOKENS, getQuote, type Token } from "@/lib/tokens";
 import { TokenSelectDialog } from "./TokenSelectDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { createPiPayment } from "@/lib/pi-sdk";
+import { approvePiPayment, completePiPayment } from "@/lib/pi-payments.functions";
+import { usePiAuth } from "@/hooks/use-pi-auth";
 
 const PRESETS = [0.1, 0.5, 1.0];
 
