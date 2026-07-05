@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, Settings2, Zap, Info } from "lucide-react";
+import { ArrowDown, Settings2, Zap, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { TOKENS, getQuote, type Token } from "@/lib/tokens";
 import { TokenSelectDialog } from "./TokenSelectDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { createPiPayment } from "@/lib/pi-sdk";
+import { approvePiPayment, completePiPayment } from "@/lib/pi-payments.functions";
+import { usePiAuth } from "@/hooks/use-pi-auth";
 
 const PRESETS = [0.1, 0.5, 1.0];
 
@@ -13,6 +16,8 @@ export function SwapCard() {
   const [to, setTo] = useState<Token>(TOKENS[1]);
   const [amount, setAmount] = useState("100");
   const [slippage, setSlippage] = useState(0.5);
+  const [paying, setPaying] = useState(false);
+  const { session, signIn } = usePiAuth(false);
 
   const inAmt = parseFloat(amount) || 0;
   const quote = useMemo(() => getQuote(inAmt, from, to, slippage), [inAmt, from, to, slippage]);
@@ -23,12 +28,73 @@ export function SwapCard() {
     setAmount(quote.out ? quote.out.toPrecision(6) : amount);
   };
 
-  const handleSwap = () => {
+  const handleSwap = async () => {
     if (!inAmt) return toast.error("Enter an amount");
     if (inAmt > from.balance) return toast.error("Insufficient balance");
-    toast.success(`Swapped ${inAmt} ${from.symbol} → ${quote.out.toPrecision(6)} ${to.symbol}`, {
-      description: `Slippage ${slippage}% · Fee ${quote.fee}%`,
-    });
+
+    // Only PI → X uses a real Pi U2A payment; other pairs stay simulated.
+    if (from.symbol !== "PI") {
+      toast.success(
+        `Swapped ${inAmt} ${from.symbol} → ${quote.out.toPrecision(6)} ${to.symbol}`,
+        { description: `Slippage ${slippage}% · Fee ${quote.fee}% · simulated` },
+      );
+      return;
+    }
+
+    const s = session ?? (await signIn());
+    if (!s) return;
+
+    setPaying(true);
+    try {
+      await createPiPayment(
+        {
+          amount: Number(inAmt.toFixed(7)),
+          memo: `PiSwap: ${inAmt} PI → ${quote.out.toPrecision(6)} ${to.symbol}`,
+          metadata: {
+            kind: "swap",
+            from: from.symbol,
+            to: to.symbol,
+            amountIn: inAmt,
+            expectedOut: quote.out,
+            minOut: quote.min,
+            slippagePct: slippage,
+          },
+        },
+        {
+          onReadyForServerApproval: (paymentId) => {
+            void approvePiPayment({ data: { paymentId } }).catch((e) =>
+              toast.error("Payment approval failed", { description: String(e) }),
+            );
+          },
+          onReadyForServerCompletion: (paymentId, txid) => {
+            void completePiPayment({ data: { paymentId, txid } })
+              .then(() => {
+                toast.success(
+                  `Swap sent: ${inAmt} PI → ${quote.out.toPrecision(6)} ${to.symbol}`,
+                  { description: `txid ${txid.slice(0, 10)}…` },
+                );
+              })
+              .catch((e) =>
+                toast.error("Payment completion failed", { description: String(e) }),
+              )
+              .finally(() => setPaying(false));
+          },
+          onCancel: () => {
+            setPaying(false);
+            toast.message("Payment cancelled");
+          },
+          onError: (error) => {
+            setPaying(false);
+            toast.error("Payment error", { description: error.message });
+          },
+        },
+      );
+    } catch (e) {
+      setPaying(false);
+      toast.error("Could not start Pi payment", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
   };
 
   const insufficient = inAmt > from.balance;
@@ -140,11 +206,19 @@ export function SwapCard() {
 
       <button
         onClick={handleSwap}
-        disabled={!inAmt || insufficient}
+        disabled={!inAmt || insufficient || paying}
         className="mt-5 w-full btn-pi rounded-2xl py-4 font-display font-semibold text-lg hover:[&:not(:disabled)]:btn-pi-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        <Zap className="size-5" />
-        {insufficient ? `Insufficient ${from.symbol}` : inAmt ? "Swap" : "Enter an amount"}
+        {paying ? <Loader2 className="size-5 animate-spin" /> : <Zap className="size-5" />}
+        {paying
+          ? "Confirm in Pi Wallet…"
+          : insufficient
+            ? `Insufficient ${from.symbol}`
+            : inAmt
+              ? from.symbol === "PI"
+                ? "Swap with Pi"
+                : "Swap"
+              : "Enter an amount"}
       </button>
 
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
