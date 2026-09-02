@@ -1,6 +1,8 @@
 // Pi Network SDK client loader + typed helpers.
 // Wraps the official Pi SDK (window.Pi) with Promise-based init, auth,
-// payments, and ads helpers, per the Pi App Platform docs.
+// payments, ads and native-feature helpers, per the Pi App Platform docs.
+
+import { PI_SANDBOX, PI_SCOPES } from "./pi-network";
 
 export type PiAuthResult = {
   accessToken: string;
@@ -41,6 +43,8 @@ export type PiPaymentCallbacks = {
   onError: (error: Error, payment?: PiPaymentDTO) => void;
 };
 
+export type AdType = "interstitial" | "rewarded";
+
 export type ShowAdResponse =
   | {
       type: "interstitial";
@@ -62,7 +66,7 @@ export type ShowAdResponse =
 type PiSDK = {
   init: (opts: { version: string; sandbox?: boolean }) => unknown;
   authenticate: (
-    scopes: string[],
+    scopes: readonly string[],
     onIncompletePaymentFound: (payment: PiPaymentDTO) => void,
   ) => Promise<PiAuthResult>;
   createPayment: (data: PiPaymentData, callbacks: PiPaymentCallbacks) => void;
@@ -70,14 +74,12 @@ type PiSDK = {
   openUrlInSystemBrowser?: (url: string) => Promise<void>;
   nativeFeaturesList?: () => Promise<string[]>;
   Ads?: {
-    showAd: (adType: "interstitial" | "rewarded") => Promise<ShowAdResponse>;
-    isAdReady: (
-      adType: "interstitial" | "rewarded",
-    ) => Promise<{ type: "interstitial" | "rewarded"; ready: boolean }>;
+    showAd: (adType: AdType) => Promise<ShowAdResponse>;
+    isAdReady: (adType: AdType) => Promise<{ type: AdType; ready: boolean }>;
     requestAd: (
-      adType: "interstitial" | "rewarded",
+      adType: AdType,
     ) => Promise<{
-      type: "interstitial" | "rewarded";
+      type: AdType;
       result: "AD_LOADED" | "AD_FAILED_TO_LOAD" | "AD_NOT_AVAILABLE";
     }>;
   };
@@ -90,12 +92,15 @@ declare global {
 }
 
 const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
-// Sandbox in dev, mainnet in prod. Override with VITE_PI_SANDBOX=1 if needed.
-const SANDBOX =
-  (import.meta.env.VITE_PI_SANDBOX ?? (import.meta.env.DEV ? "1" : "0")) === "1";
 
 let sdkPromise: Promise<PiSDK> | null = null;
 let initPromise: Promise<void> | null = null;
+
+/** True when running inside the Pi Browser (the SDK only works there). */
+export function isPiBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /PiBrowser/i.test(navigator.userAgent);
+}
 
 function loadScript(): Promise<PiSDK> {
   if (typeof window === "undefined") {
@@ -105,27 +110,31 @@ function loadScript(): Promise<PiSDK> {
   if (sdkPromise) return sdkPromise;
 
   sdkPromise = new Promise<PiSDK>((resolve, reject) => {
+    const fail = () => {
+      sdkPromise = null;
+      reject(
+        new Error(
+          "Failed to load the Pi SDK. Open this app inside the Pi Browser.",
+        ),
+      );
+    };
+    const handle = () => {
+      if (window.Pi) resolve(window.Pi);
+      else fail();
+    };
     const existing = document.querySelector<HTMLScriptElement>(
       `script[src="${SDK_URL}"]`,
     );
-    const handle = () => {
-      if (window.Pi) resolve(window.Pi);
-      else reject(new Error("Pi SDK loaded but window.Pi is undefined"));
-    };
     if (existing) {
       existing.addEventListener("load", handle, { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("Failed to load Pi SDK")),
-        { once: true },
-      );
+      existing.addEventListener("error", fail, { once: true });
       return;
     }
     const s = document.createElement("script");
     s.src = SDK_URL;
     s.async = true;
     s.onload = handle;
-    s.onerror = () => reject(new Error("Failed to load Pi SDK"));
+    s.onerror = fail;
     document.head.appendChild(s);
   });
   return sdkPromise;
@@ -135,31 +144,37 @@ export async function initPi(): Promise<PiSDK> {
   const Pi = await loadScript();
   if (!initPromise) {
     initPromise = Promise.resolve(
-      Pi.init({ version: "2.0", sandbox: SANDBOX }),
+      Pi.init({ version: "2.0", sandbox: PI_SANDBOX }),
     ).then(() => undefined);
   }
   await initPromise;
   return Pi;
 }
 
+/**
+ * Recover a payment left dangling by a previous session:
+ * complete it when the blockchain tx exists, otherwise cancel it so the
+ * user is not blocked from starting a new payment.
+ */
 async function defaultOnIncompletePayment(payment: PiPaymentDTO) {
-  // Best-effort recovery: hand the incomplete payment to the server so it
-  // can be completed on-chain per the Pi payment flow docs.
-  console.warn("[Pi] incomplete payment found", payment);
+  console.warn("[Pi] incomplete payment found", payment.identifier);
   try {
-    const { completePiPayment } = await import("./pi-payments.functions");
-    if (payment.transaction?.txid) {
-      await completePiPayment({
-        data: { paymentId: payment.identifier, txid: payment.transaction.txid },
-      });
+    const { completePiPayment, cancelPiPayment } = await import(
+      "./pi-payments.functions"
+    );
+    const txid = payment.transaction?.txid;
+    if (txid) {
+      await completePiPayment({ data: { paymentId: payment.identifier, txid } });
+    } else {
+      await cancelPiPayment({ data: { paymentId: payment.identifier } });
     }
   } catch (err) {
-    console.error("[Pi] failed to complete incomplete payment", err);
+    console.error("[Pi] failed to resolve incomplete payment", err);
   }
 }
 
 export async function authenticatePi(
-  scopes: string[] = ["username", "payments", "wallet_address"],
+  scopes: readonly string[] = PI_SCOPES,
 ): Promise<PiAuthResult> {
   const Pi = await initPi();
   return Pi.authenticate(scopes, defaultOnIncompletePayment);
@@ -173,14 +188,28 @@ export async function createPiPayment(
   Pi.createPayment(data, callbacks);
 }
 
-export async function showPiAd(
-  adType: "interstitial" | "rewarded",
-): Promise<ShowAdResponse> {
+export async function isPiAdReady(adType: AdType): Promise<boolean> {
+  const Pi = await initPi();
+  if (!Pi.Ads) return false;
+  return (await Pi.Ads.isAdReady(adType)).ready;
+}
+
+export async function showPiAd(adType: AdType): Promise<ShowAdResponse> {
   const Pi = await initPi();
   if (!Pi.Ads) {
     return adType === "rewarded"
       ? { type: "rewarded", result: "ADS_NOT_SUPPORTED" }
       : { type: "interstitial", result: "AD_NOT_AVAILABLE" };
+  }
+  // Per the Ads docs, request the ad first when it isn't cached yet.
+  const { ready } = await Pi.Ads.isAdReady(adType);
+  if (!ready) {
+    const requested = await Pi.Ads.requestAd(adType);
+    if (requested.result !== "AD_LOADED") {
+      return adType === "rewarded"
+        ? { type: "rewarded", result: "AD_NOT_AVAILABLE" }
+        : { type: "interstitial", result: "AD_NOT_AVAILABLE" };
+    }
   }
   return Pi.Ads.showAd(adType);
 }
@@ -188,4 +217,15 @@ export async function showPiAd(
 export async function openPiShareDialog(title: string, message: string) {
   const Pi = await initPi();
   Pi.openShareDialog?.(title, message);
+}
+
+export async function openPiUrl(url: string) {
+  const Pi = await initPi();
+  if (Pi.openUrlInSystemBrowser) await Pi.openUrlInSystemBrowser(url);
+  else if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
+}
+
+export async function piNativeFeatures(): Promise<string[]> {
+  const Pi = await initPi();
+  return (await Pi.nativeFeaturesList?.()) ?? [];
 }
