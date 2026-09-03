@@ -5,11 +5,17 @@ import { TOKENS, getQuote, type Token } from "@/lib/tokens";
 import { TokenSelectDialog } from "./TokenSelectDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { createPiPayment } from "@/lib/pi-sdk";
-import { approvePiPayment, completePiPayment } from "@/lib/pi-payments.functions";
+import { createPiPayment, openPiUrl } from "@/lib/pi-sdk";
+import {
+  approvePiPayment,
+  completePiPayment,
+  getPiPayment,
+} from "@/lib/pi-payments.functions";
 import { usePiAuth } from "@/hooks/use-pi-auth";
+import { PI_NETWORK_LABEL, piTxUrl } from "@/lib/pi-network";
 
 const PRESETS = [0.1, 0.5, 1.0];
+
 
 export function SwapCard() {
   const [from, setFrom] = useState<Token>(TOKENS[0]);
