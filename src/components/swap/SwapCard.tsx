@@ -241,7 +241,7 @@ export function SwapCard() {
 
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
         <Info className="size-3" />
-        Demo interface · trades are simulated with mock liquidity
+        {PI_NETWORK_LABEL} · PI payments are real, quotes use mock liquidity
       </p>
     </div>
   );
