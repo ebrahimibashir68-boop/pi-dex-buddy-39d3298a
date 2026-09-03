@@ -74,10 +74,21 @@ export function SwapCard() {
           },
           onReadyForServerCompletion: (paymentId, txid) => {
             void completePiPayment({ data: { paymentId, txid } })
-              .then(() => {
+              .then(async () => {
+                const status = await getPiPayment({ data: { paymentId } }).catch(
+                  () => null,
+                );
                 toast.success(
                   `Swap sent: ${inAmt} PI → ${quote.out.toPrecision(6)} ${to.symbol}`,
-                  { description: `txid ${txid.slice(0, 10)}…` },
+                  {
+                    description: `${PI_NETWORK_LABEL} · ${
+                      status?.verified ? "verified" : "submitted"
+                    } · tap to view tx`,
+                    action: {
+                      label: "Explorer",
+                      onClick: () => void openPiUrl(piTxUrl(txid)),
+                    },
+                  },
                 );
               })
               .catch((e) =>
@@ -85,6 +96,7 @@ export function SwapCard() {
               )
               .finally(() => setPaying(false));
           },
+
           onCancel: () => {
             setPaying(false);
             toast.message("Payment cancelled");
