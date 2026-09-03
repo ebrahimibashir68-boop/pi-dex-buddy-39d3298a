@@ -1,19 +1,19 @@
-import { Wallet, Loader2 } from "lucide-react";
+import { Wallet, Loader2, LogOut } from "lucide-react";
 import { usePiAuth } from "@/hooks/use-pi-auth";
 import { SettingsMenu } from "./SettingsMenu";
+import { PI_NETWORK_LABEL, shortenAddress } from "@/lib/pi-network";
 
 export function Header() {
-  const { session, status, signIn } = usePiAuth(false);
+  const { session, status, signIn, signOut } = usePiAuth(false);
   const loading = status === "loading";
   const shortWallet = session?.walletAddress
-    ? `${session.walletAddress.slice(0, 6)}…${session.walletAddress.slice(-4)}`
+    ? shortenAddress(session.walletAddress)
     : null;
   const label = session
-    ? shortWallet ?? `@${session.username}`
+    ? (shortWallet ?? `@${session.username}`)
     : loading
       ? "Connecting…"
       : "Connect Pi Wallet";
-
 
   return (
     <header className="w-full px-4 sm:px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
@@ -26,7 +26,9 @@ export function Header() {
         </div>
         <div className="leading-tight">
           <div className="font-display font-semibold">PiSwap</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pi DEX</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Pi DEX · {PI_NETWORK_LABEL}
+          </div>
         </div>
       </div>
 
@@ -46,12 +48,20 @@ export function Header() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => {
-            if (!session && !loading) void signIn();
+            if (session) signOut();
+            else if (!loading) void signIn();
           }}
           disabled={loading}
+          aria-label={session ? "Disconnect Pi wallet" : "Connect Pi wallet"}
           className="btn-pi rounded-full px-4 py-2 text-sm font-semibold flex items-center gap-2 hover:btn-pi-hover disabled:opacity-70"
         >
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : session ? (
+            <LogOut className="size-4" />
+          ) : (
+            <Wallet className="size-4" />
+          )}
           {label}
         </button>
         <SettingsMenu />
