@@ -5,11 +5,17 @@ import { TOKENS, getQuote, type Token } from "@/lib/tokens";
 import { TokenSelectDialog } from "./TokenSelectDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { createPiPayment } from "@/lib/pi-sdk";
-import { approvePiPayment, completePiPayment } from "@/lib/pi-payments.functions";
+import { createPiPayment, openPiUrl } from "@/lib/pi-sdk";
+import {
+  approvePiPayment,
+  completePiPayment,
+  getPiPayment,
+} from "@/lib/pi-payments.functions";
 import { usePiAuth } from "@/hooks/use-pi-auth";
+import { PI_NETWORK_LABEL, piTxUrl } from "@/lib/pi-network";
 
 const PRESETS = [0.1, 0.5, 1.0];
+
 
 export function SwapCard() {
   const [from, setFrom] = useState<Token>(TOKENS[0]);
@@ -68,10 +74,21 @@ export function SwapCard() {
           },
           onReadyForServerCompletion: (paymentId, txid) => {
             void completePiPayment({ data: { paymentId, txid } })
-              .then(() => {
+              .then(async () => {
+                const status = await getPiPayment({ data: { paymentId } }).catch(
+                  () => null,
+                );
                 toast.success(
                   `Swap sent: ${inAmt} PI → ${quote.out.toPrecision(6)} ${to.symbol}`,
-                  { description: `txid ${txid.slice(0, 10)}…` },
+                  {
+                    description: `${PI_NETWORK_LABEL} · ${
+                      status?.verified ? "verified" : "submitted"
+                    } · tap to view tx`,
+                    action: {
+                      label: "Explorer",
+                      onClick: () => void openPiUrl(piTxUrl(txid)),
+                    },
+                  },
                 );
               })
               .catch((e) =>
@@ -79,6 +96,7 @@ export function SwapCard() {
               )
               .finally(() => setPaying(false));
           },
+
           onCancel: () => {
             setPaying(false);
             toast.message("Payment cancelled");
@@ -223,7 +241,7 @@ export function SwapCard() {
 
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
         <Info className="size-3" />
-        Demo interface · trades are simulated with mock liquidity
+        {PI_NETWORK_LABEL} · PI payments are real, quotes use mock liquidity
       </p>
     </div>
   );

@@ -46,6 +46,17 @@ async function piRequest<T = unknown>(
 
 const paymentId = z.string().min(3).max(256);
 
+/** Serializable shape of a Pi Platform payment record. */
+export type PiPaymentApi = {
+  identifier: string;
+  amount: number;
+  memo: string;
+  direction: string;
+  network: string;
+  status: Record<string, boolean>;
+  transaction: { txid: string; verified: boolean } | null;
+};
+
 /* ------------------------------------------------------------------ *
  * U2A (user pays the app)
  * ------------------------------------------------------------------ */
@@ -54,7 +65,7 @@ const paymentId = z.string().min(3).max(256);
 export const approvePiPayment = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ paymentId }).parse(data))
   .handler(async ({ data }) => {
-    const payment = await piRequest(`/payments/${data.paymentId}/approve`, {
+    const payment = await piRequest<PiPaymentApi>(`/payments/${data.paymentId}/approve`, {
       method: "POST",
     });
     return { ok: true as const, payment };
@@ -66,7 +77,7 @@ export const completePiPayment = createServerFn({ method: "POST" })
     z.object({ paymentId, txid: z.string().min(3).max(256) }).parse(data),
   )
   .handler(async ({ data }) => {
-    const payment = await piRequest(`/payments/${data.paymentId}/complete`, {
+    const payment = await piRequest<PiPaymentApi>(`/payments/${data.paymentId}/complete`, {
       method: "POST",
       body: JSON.stringify({ txid: data.txid }),
     });
@@ -77,7 +88,7 @@ export const completePiPayment = createServerFn({ method: "POST" })
 export const cancelPiPayment = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ paymentId }).parse(data))
   .handler(async ({ data }) => {
-    const payment = await piRequest(`/payments/${data.paymentId}/cancel`, {
+    const payment = await piRequest<PiPaymentApi>(`/payments/${data.paymentId}/cancel`, {
       method: "POST",
     });
     return { ok: true as const, payment };
@@ -87,12 +98,7 @@ export const cancelPiPayment = createServerFn({ method: "POST" })
 export const getPiPayment = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ paymentId }).parse(data))
   .handler(async ({ data }) => {
-    const payment = await piRequest<{
-      identifier: string;
-      amount: number;
-      status: Record<string, boolean>;
-      transaction: null | { txid: string; verified: boolean };
-    }>(`/payments/${data.paymentId}`);
+    const payment = await piRequest<PiPaymentApi>(`/payments/${data.paymentId}`);
     return {
       identifier: payment.identifier,
       amount: payment.amount,
@@ -184,7 +190,7 @@ export const payoutPiToUser = createServerFn({ method: "POST" })
     const txid = submitted.hash;
 
     // 3. Complete the payment so the Pi servers verify it.
-    const payment = await piRequest(`/payments/${created.identifier}/complete`, {
+    const payment = await piRequest<PiPaymentApi>(`/payments/${created.identifier}/complete`, {
       method: "POST",
       body: JSON.stringify({ txid }),
     });
@@ -205,7 +211,7 @@ export const payoutPiToUser = createServerFn({ method: "POST" })
 export const listIncompleteServerPayments = createServerFn({
   method: "POST",
 }).handler(async () => {
-  const result = await piRequest<{ incomplete_server_payments: unknown[] }>(
+  const result = await piRequest<{ incomplete_server_payments: PiPaymentApi[] }>(
     "/payments/incomplete_server_payments",
   );
   return { payments: result.incomplete_server_payments ?? [] };
